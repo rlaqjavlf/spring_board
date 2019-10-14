@@ -1,0 +1,95 @@
+--게시판 테이블
+CREATE table spring_board(
+    bno number(10),
+    title NVARCHAR2(200) not null,
+    content NVARCHAR2(2000) not null,
+    writer NVARCHAR2(50) not null,
+    reqdate date DEFAULT sysdate,
+    updatedate date DEFAULT sysdate);
+
+select * from SPRING_BOARD;
+--더미데이터
+insert into SPRING_BOARD(bno,title,content,writer)
+(select seq_board.nextVal,title,content,writer from SPRING_BOARD)
+
+--rownum :가상의 컬럼(임시부여)
+
+select rownum,bno, title from SPRING_BOARD where rownum <= 10
+
+--rownum 과 order by는  같이 쓸때 주의 (rownum의 우선순위가 높음)
+
+select *from (select *from SPRING_BOARD order by bno desc) where rownum <=10
+
+--1rownum 이용 하여 최신글 10개 가져오기 
+select rownum,bno,title,writer
+from (select bno,title, writer from SPRING_BOARD order by bno desc)
+where rownum <=10
+
+--2rownum 이용 하여 최신글 10개 가져오기 (빠르게 db에 접근하여 가져올수있다)
+select rownum,bno,title,writer
+from (select /*+INDEX_DESC(srring_board pk_spring_board)*/
+bno,title, writer from SPRING_BOARD)
+where rownum <=10
+
+--3rownum 이용 하여 최신글 10개 가져오기 (빠르게 db에 접근하여 가져올수있다)
+
+	select bno,title,writer
+	from (select /*+INDEX_DESC(spring_board pk_spring_board)*/
+	rownum rn, bno,title, writer from SPRING_BOARD
+	where rownum <=?
+	)
+	where rn>?;
+
+--? : 1page = 1~10 1page*10 개씩 / (1page-1)*10
+--? : 2page = 11~20 2page*10 개씩 / (2page-1)*10
+
+	
+--sql reply
+create table spring_reply(
+	rno number(10,0) constraint pk_reply primary key, --댓글번호
+	bno number(10,0) not null,--원글번호
+	reply varchar2(1000) not null,--댓글 내용
+	replyer varchar2(50) not null,--댓글작성자
+	replyDate date default sysdate,--댓글작성일
+	updateDate date default sysdate,--댓글수정일
+	constraint fk_reply_board foreign key(bno)
+	references spring_board(bno)
+	
+);
+create sequence seq_reply;
+select *from SPRING_REPLY
+
+
+--인덱스 생성 검색 빨리 해주기위해 
+-- 모아서 정리해준것
+create index idx_reply on spring_reply(bno desc, rno asc);
+
+
+--댓글수 처리를 위한 컬럼 추가
+alter table Spring_board add (replyCnt number default 0);
+
+update SPRING_BOARD
+set replyCnt=(select count(rno) from SPRING_REPLY
+												where SPRING_REPLY.bno=spring_board.bno);
+												
+												
+--파일 첨부 테이블
+create table spring_attach(
+	uuid varchar2(100) not null,
+	uploadPath varchar2(200) not null,
+	fileName varchar2(100) not null,
+	fileType char(1) default 'I',
+	bno number(10,0)
+);
+
+select * from spring_attach;
+
+alter table spring_attach add constraint pk_attach primary key(uuid);
+alter table spring_attach add constraint fk_board_attach foreign key(bno)
+references spring_board(bno);
+
+--BoardAttachVO
+
+
+
+
